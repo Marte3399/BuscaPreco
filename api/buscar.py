@@ -1,166 +1,145 @@
 """
-Vercel Serverless Function - Busca de precos no Google Shopping e Amazon Brasil.
-Usa SerpAPI que retorna JSON estruturado (sem depender de parsing HTML).
+Vercel Serverless Function - Busca de precos usando DuckDuckGo.
+Sem API key, sem bloqueio de IP, 100% gratis.
 """
 
 import json
-import os
-from concurrent.futures import ThreadPoolExecutor
+import re
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
-import requests
-
-SERPAPI_KEY = os.environ.get("SERPAPI_KEY", "")
+from duckduckgo_search import DDGS
 
 
-def _serpapi_request(params):
-    """Faz requisicao para SerpAPI e retorna o JSON."""
-    params["api_key"] = SERPAPI_KEY
-    resp = requests.get("https://serpapi.com/search.json", params=params, timeout=30)
-    resp.raise_for_status()
-    return resp.json()
-
-
-def parse_preco(texto):
-    """Converte texto de preco (ex: 'R$ 1.299,90') para float."""
-    try:
-        texto = texto.replace("R$", "").replace("$", "").strip()
-        texto = texto.replace("\xa0", "").replace(" ", "")
-        texto = texto.replace(".", "").replace(",", ".")
-        valor = float(texto)
-        return valor if valor > 0 else None
-    except (ValueError, AttributeError):
-        return None
-
-
-# ── Google Shopping via SerpAPI ──────────────────────────────────────────────
-
-def buscar_google_shopping(produto, num_resultados=20):
-    """Busca precos no Google Shopping via SerpAPI (engine: google_shopping)."""
-    resultados = []
-
-    if not SERPAPI_KEY:
-        return resultados, "SERPAPI_KEY nao configurada."
-
-    try:
-        data = _serpapi_request({
-            "engine": "google_shopping",
-            "q": produto,
-            "hl": "pt",
-            "gl": "br",
-            "num": str(num_resultados),
-        })
-    except Exception as e:
-        return resultados, f"Erro Google Shopping: {e}"
-
-    if "error" in data:
-        return resultados, f"SerpAPI: {data['error']}"
-
-    for item in data.get("shopping_results", [])[:num_resultados]:
+def extrair_precos(texto):
+    """Extrai todos os precos em R$ de um texto."""
+    # Padroes: R$ 1.299,90 / R$1299,90 / R$ 1299.90 / R$ 99,90
+    padroes = re.findall(
+        r'R\$\s*(\d{1,3}(?:\.\d{3})*(?:,\d{2})?|\d+(?:,\d{2})?)',
+        texto
+    )
+    precos = []
+    for p in padroes:
         try:
-            nome = item.get("title", "")
-            if not nome:
-                continue
-
-            preco_valor = item.get("extracted_price")
-            if preco_valor is None or preco_valor <= 0:
-                preco_valor = parse_preco(item.get("price", ""))
-            if preco_valor is None:
-                continue
-
-            preco_texto = item.get("price", f"R$ {preco_valor:,.2f}")
-
-            resultados.append({
-                "nome": nome,
-                "preco": preco_valor,
-                "preco_texto": preco_texto,
-                "loja": item.get("source", ""),
-                "link": item.get("link", item.get("product_link", "")),
-                "fonte": "Google Shopping",
-                "imagem": item.get("thumbnail", ""),
-                "avaliacao": f"{item['rating']} ({item.get('reviews', 0)})" if item.get("rating") else "",
-            })
-        except Exception:
+            valor = p.replace(".", "").replace(",", ".")
+            valor = float(valor)
+            if valor > 0:
+                precos.append(valor)
+        except ValueError:
             continue
+    return precos
 
-    return resultados, None
+
+def identificar_loja(url):
+    """Identifica a loja pelo dominio da URL."""
+    domain = urlparse(url).netloc.lower()
+    lojas = {
+        "amazon": "Amazon",
+        "mercadolivre": "Mercado Livre",
+        "magazineluiza": "Magazine Luiza",
+        "magalu": "Magazine Luiza",
+        "americanas": "Americanas",
+        "casasbahia": "Casas Bahia",
+        "extra.com": "Extra",
+        "kabum": "KaBuM!",
+        "pichau": "Pichau",
+        "terabyte": "Terabyteshop",
+        "shopee": "Shopee",
+        "aliexpress": "AliExpress",
+        "carrefour": "Carrefour",
+        "pontofrio": "Ponto Frio",
+        "submarino": "Submarino",
+        "zoom.com": "Zoom",
+        "buscape": "Buscape",
+        "pelando": "Pelando",
+        "promobit": "Promobit",
+    }
+    for chave, nome in lojas.items():
+        if chave in domain:
+            return nome
+    # Retorna dominio limpo
+    domain = domain.replace("www.", "")
+    return domain.split(".")[0].capitalize() if domain else ""
 
 
-# ── Amazon via SerpAPI ───────────────────────────────────────────────────────
-
-def buscar_amazon(produto, num_resultados=20):
-    """Busca precos na Amazon Brasil via SerpAPI (engine: amazon)."""
+def buscar_produtos(produto, max_resultados=30):
+    """Busca produtos e precos no DuckDuckGo."""
     resultados = []
+    vistos = set()  # evitar duplicatas por URL
 
-    if not SERPAPI_KEY:
-        return resultados, "SERPAPI_KEY nao configurada."
+    queries = [
+        f"{produto} preço comprar",
+        f"{produto} menor preço loja online",
+    ]
 
-    try:
-        data = _serpapi_request({
-            "engine": "amazon",
-            "amazon_domain": "amazon.com.br",
-            "q": produto,
-        })
-    except Exception as e:
-        return resultados, f"Erro Amazon: {e}"
-
-    if "error" in data:
-        return resultados, f"SerpAPI: {data['error']}"
-
-    for item in data.get("organic_results", [])[:num_resultados]:
-        try:
-            nome = item.get("title", "")
-            if not nome:
+    with DDGS() as ddgs:
+        for query in queries:
+            try:
+                items = ddgs.text(
+                    query,
+                    region="br-pt",
+                    max_results=max_resultados,
+                )
+            except Exception:
                 continue
 
-            # SerpAPI retorna price info em diferentes campos
-            price_info = item.get("price", {})
+            for item in items:
+                try:
+                    titulo = item.get("title", "")
+                    snippet = item.get("body", "")
+                    url = item.get("href", "")
 
-            if isinstance(price_info, dict):
-                preco_valor = price_info.get("value") or price_info.get("raw")
-                preco_texto = price_info.get("raw", "")
-                if isinstance(preco_valor, str):
-                    preco_valor = parse_preco(preco_valor)
-                if not preco_texto and preco_valor:
-                    preco_texto = f"R$ {preco_valor:,.2f}"
-            elif isinstance(price_info, str):
-                preco_texto = price_info
-                preco_valor = parse_preco(price_info)
-            else:
-                # Tenta extracted_price ou price_raw
-                preco_valor = item.get("extracted_price")
-                preco_texto = item.get("price_raw", "")
-                if not preco_valor:
+                    if not titulo or not url:
+                        continue
+
+                    # Evita duplicatas
+                    dominio_path = urlparse(url).netloc + urlparse(url).path
+                    if dominio_path in vistos:
+                        continue
+                    vistos.add(dominio_path)
+
+                    # Extrai precos do titulo e snippet
+                    texto_completo = f"{titulo} {snippet}"
+                    precos = extrair_precos(texto_completo)
+
+                    if not precos:
+                        continue
+
+                    # Usa o menor preco encontrado no texto
+                    preco_valor = min(precos)
+
+                    # Formata preco texto
+                    if preco_valor >= 1000:
+                        inteiro = int(preco_valor)
+                        centavos = int(round((preco_valor - inteiro) * 100))
+                        inteiro_fmt = f"{inteiro:,}".replace(",", ".")
+                        preco_texto = f"R$ {inteiro_fmt},{centavos:02d}"
+                    else:
+                        preco_texto = f"R$ {preco_valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+                    loja = identificar_loja(url)
+
+                    # Limpa titulo removendo precos e lixo
+                    nome = re.sub(r'\s*[-|]\s*R\$.*', '', titulo).strip()
+                    nome = re.sub(r'\s*R\$\s*\d.*', '', nome).strip()
+                    if not nome:
+                        nome = titulo
+
+                    resultados.append({
+                        "nome": nome,
+                        "preco": preco_valor,
+                        "preco_texto": preco_texto,
+                        "loja": loja,
+                        "link": url,
+                        "fonte": loja or "Web",
+                        "imagem": "",
+                        "avaliacao": "",
+                    })
+                except Exception:
                     continue
 
-            if preco_valor is None or preco_valor <= 0:
-                continue
+    return resultados
 
-            if not preco_texto:
-                preco_texto = f"R$ {preco_valor:,.2f}"
-
-            rating = item.get("rating", "")
-            reviews = item.get("reviews", "")
-            avaliacao = f"{rating} ({reviews})" if rating else ""
-
-            resultados.append({
-                "nome": nome,
-                "preco": preco_valor,
-                "preco_texto": preco_texto,
-                "loja": "Amazon",
-                "link": item.get("link", ""),
-                "fonte": "Amazon",
-                "imagem": item.get("thumbnail", ""),
-                "avaliacao": avaliacao,
-            })
-        except Exception:
-            continue
-
-    return resultados, None
-
-
-# ── Handler Vercel ───────────────────────────────────────────────────────────
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -172,44 +151,34 @@ class handler(BaseHTTPRequestHandler):
             self._respond(400, {"erro": "Parametro 'q' e obrigatorio."})
             return
 
-        if not SERPAPI_KEY:
+        try:
+            resultados = buscar_produtos(produto)
+        except Exception as e:
             self._respond(200, {
                 "produto": produto,
                 "total": 0,
-                "google_shopping": 0,
-                "amazon": 0,
                 "resultados": [],
-                "avisos": [
-                    "SERPAPI_KEY nao configurada. "
-                    "Cadastre-se gratis em serpapi.com e adicione a chave "
-                    "nas Environment Variables da Vercel (Settings > Environment Variables)."
-                ],
+                "avisos": [f"Erro na busca: {e}"],
             })
             return
 
-        # Busca em paralelo para nao estourar timeout
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            fut_google = executor.submit(buscar_google_shopping, produto)
-            fut_amazon = executor.submit(buscar_amazon, produto)
-            resultados_google, erro_google = fut_google.result()
-            resultados_amazon, erro_amazon = fut_amazon.result()
+        # Ordena por preco crescente
+        resultados.sort(key=lambda x: x["preco"])
 
-        todos = resultados_google + resultados_amazon
-        todos.sort(key=lambda x: x["preco"])
-
-        avisos = []
-        if erro_google:
-            avisos.append(f"Google Shopping: {erro_google}")
-        if erro_amazon:
-            avisos.append(f"Amazon: {erro_amazon}")
+        # Remove duplicatas muito similares (mesmo preco + mesmo dominio)
+        filtrados = []
+        visto_preco_loja = set()
+        for r in resultados:
+            chave = (r["preco"], r["loja"])
+            if chave not in visto_preco_loja:
+                visto_preco_loja.add(chave)
+                filtrados.append(r)
 
         self._respond(200, {
             "produto": produto,
-            "total": len(todos),
-            "google_shopping": len(resultados_google),
-            "amazon": len(resultados_amazon),
-            "resultados": todos,
-            "avisos": avisos,
+            "total": len(filtrados),
+            "resultados": filtrados,
+            "avisos": [],
         })
 
     def _respond(self, status, data):

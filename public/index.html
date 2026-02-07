@@ -252,8 +252,7 @@
       font-weight: 600;
     }
 
-    .badge-google { background: #1d4ed8; color: #bfdbfe; }
-    .badge-amazon { background: #b45309; color: #fef3c7; }
+    .badge-loja { background: #334155; color: #e2e8f0; }
 
     .result-preco {
       font-size: 1.25rem;
@@ -353,7 +352,7 @@
 
   <div class="header">
     <h1>BuscaPreco</h1>
-    <p>Compare precos entre Google Shopping e Amazon</p>
+    <p>Compare precos entre diversas lojas online</p>
   </div>
 
   <div class="search-container">
@@ -485,18 +484,17 @@
       const menor = data.resultados[0];
       const maior = data.resultados[data.resultados.length - 1];
 
+      // Conta lojas unicas
+      const lojas = [...new Set(data.resultados.map(r => r.loja))];
+
       stats.innerHTML = `
         <div class="stat-card">
-          <div class="label">Total</div>
+          <div class="label">Resultados</div>
           <div class="value">${data.total}</div>
         </div>
         <div class="stat-card">
-          <div class="label">Google Shopping</div>
-          <div class="value">${data.google_shopping}</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Amazon</div>
-          <div class="value">${data.amazon}</div>
+          <div class="label">Lojas</div>
+          <div class="value">${lojas.length}</div>
         </div>
         <div class="stat-card menor">
           <div class="label">Menor preco</div>
@@ -526,7 +524,7 @@
 
       results.innerHTML = items.map((item, i) => {
         const isMelhor = i === 0;
-        const badgeClass = item.fonte === 'Amazon' ? 'badge-amazon' : 'badge-google';
+        const badgeClass = 'badge-loja';
 
         const imgHtml = item.imagem
           ? `<img class="result-img" src="${escapeHtml(item.imagem)}" alt="" loading="lazy">`
@@ -546,8 +544,7 @@
                   ${escapeHtml(item.nome)}
                 </div>
                 <div class="result-meta">
-                  <span class="badge ${badgeClass}">${escapeHtml(item.fonte)}</span>
-                  <span>${escapeHtml(item.loja || '')}</span>
+                  <span class="badge ${badgeClass}">${escapeHtml(item.loja || item.fonte)}</span>
                   ${item.avaliacao ? `<span>${escapeHtml(item.avaliacao)}</span>` : ''}
                   ${isMelhor ? '<span class="tag-melhor">Melhor preco</span>' : ''}
                 </div>
