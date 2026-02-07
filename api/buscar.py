@@ -1,85 +1,116 @@
 """
 Vercel Serverless Function - Busca de precos usando DuckDuckGo HTML.
-Requisicao HTTP direta, sem bibliotecas externas problematicas.
+Sem API key, sem bloqueio de IP, 100% gratis.
 """
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler
-from urllib.parse import parse_qs, urlparse, quote_plus
+from urllib.parse import parse_qs, urlparse, quote_plus, unquote
 
 import requests
 from bs4 import BeautifulSoup
 
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/122.0.0.0 Safari/537.36"
+    ),
+}
+
 
 def extrair_precos(texto):
     """Extrai todos os precos em R$ de um texto."""
-    padroes = re.findall(
-        r'R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})',
-        texto
-    )
     precos = []
-    for p in padroes:
+
+    # Padrao 1: R$ 1.299,90 / R$99,90
+    for m in re.findall(r'R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})', texto):
         try:
-            valor = float(p.replace(".", "").replace(",", "."))
-            if 1 < valor < 100000:
-                precos.append(valor)
+            v = float(m.replace(".", "").replace(",", "."))
+            if 1 < v < 200000:
+                precos.append(v)
         except ValueError:
-            continue
+            pass
+
+    # Padrao 2: "por 1.299,90" / "por 99,90" / "a partir de 99,90"
+    if not precos:
+        for m in re.findall(r'(?:por|partir de|desde|price|preco)\s*:?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})', texto, re.IGNORECASE):
+            try:
+                v = float(m.replace(".", "").replace(",", "."))
+                if 1 < v < 200000:
+                    precos.append(v)
+            except ValueError:
+                pass
+
+    # Padrao 3: numeros com virgula que parecem precos (ex: "1.299,90" sozinho)
+    if not precos:
+        for m in re.findall(r'(\d{1,3}(?:\.\d{3})+,\d{2})', texto):
+            try:
+                v = float(m.replace(".", "").replace(",", "."))
+                if 10 < v < 200000:
+                    precos.append(v)
+            except ValueError:
+                pass
+
     return precos
+
+
+LOJAS = {
+    "amazon": "Amazon",
+    "mercadolivre": "Mercado Livre",
+    "produto.mercadolivre": "Mercado Livre",
+    "magazineluiza": "Magazine Luiza",
+    "magalu": "Magazine Luiza",
+    "americanas": "Americanas",
+    "casasbahia": "Casas Bahia",
+    "kabum": "KaBuM!",
+    "pichau": "Pichau",
+    "terabyte": "Terabyteshop",
+    "shopee": "Shopee",
+    "aliexpress": "AliExpress",
+    "carrefour": "Carrefour",
+    "submarino": "Submarino",
+    "zoom.com": "Zoom",
+    "buscape": "Buscape",
+    "extra.com": "Extra",
+    "pontofrio": "Ponto Frio",
+    "pelando": "Pelando",
+    "promobit": "Promobit",
+    "girafa": "Girafa",
+    "fastshop": "Fast Shop",
+    "colombo": "Colombo",
+    "walm": "Walmart",
+    "nike": "Nike",
+    "adidas": "Adidas",
+    "netshoes": "Netshoes",
+    "centauro": "Centauro",
+    "dafiti": "Dafiti",
+    "samsung": "Samsung",
+    "apple": "Apple",
+    "dell": "Dell",
+    "lenovo": "Lenovo",
+}
 
 
 def identificar_loja(url):
     """Identifica a loja pelo dominio da URL."""
     domain = urlparse(url).netloc.lower()
-    lojas = {
-        "amazon": "Amazon",
-        "mercadolivre": "Mercado Livre",
-        "magazineluiza": "Magazine Luiza",
-        "magalu": "Magazine Luiza",
-        "americanas": "Americanas",
-        "casasbahia": "Casas Bahia",
-        "kabum": "KaBuM!",
-        "pichau": "Pichau",
-        "terabyte": "Terabyteshop",
-        "shopee": "Shopee",
-        "aliexpress": "AliExpress",
-        "carrefour": "Carrefour",
-        "submarino": "Submarino",
-        "zoom.com": "Zoom",
-        "buscape": "Buscape",
-        "extra.com": "Extra",
-        "pontofrio": "Ponto Frio",
-        "pelando": "Pelando",
-        "promobit": "Promobit",
-        "girafa": "Girafa",
-        "fastshop": "Fast Shop",
-        "colombo": "Colombo",
-        "walm": "Walmart",
-    }
-    for chave, nome in lojas.items():
+    for chave, nome in LOJAS.items():
         if chave in domain:
             return nome
     domain = domain.replace("www.", "")
     parts = domain.split(".")
-    return parts[0].capitalize() if parts else ""
+    return parts[0].capitalize() if parts else "Web"
 
 
-def buscar_duckduckgo(query, max_results=30):
+def buscar_duckduckgo(query):
     """Busca no DuckDuckGo HTML e retorna lista de resultados."""
-    url = "https://html.duckduckgo.com/html/"
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/122.0.0.0 Safari/537.36"
-        ),
-    }
-
     resp = requests.post(
-        url,
+        "https://html.duckduckgo.com/html/",
         data={"q": query, "kl": "br-pt"},
-        headers=headers,
+        headers=HEADERS,
         timeout=15,
     )
     resp.raise_for_status()
@@ -87,10 +118,9 @@ def buscar_duckduckgo(query, max_results=30):
     soup = BeautifulSoup(resp.text, "html.parser")
     results = []
 
-    for item in soup.select(".result")[:max_results]:
+    for item in soup.select(".result"):
         title_el = item.select_one(".result__title a") or item.select_one(".result__a")
         snippet_el = item.select_one(".result__snippet")
-        url_el = item.select_one(".result__url")
 
         title = title_el.get_text(strip=True) if title_el else ""
         snippet = snippet_el.get_text(strip=True) if snippet_el else ""
@@ -98,23 +128,13 @@ def buscar_duckduckgo(query, max_results=30):
 
         if title_el and title_el.get("href"):
             href = title_el["href"]
-            # DuckDuckGo wraps URLs in redirects
             if "uddg=" in href:
-                from urllib.parse import unquote
                 match = re.search(r'uddg=([^&]+)', href)
                 if match:
                     href = unquote(match.group(1))
 
-        if not href and url_el:
-            href = url_el.get_text(strip=True)
-            if not href.startswith("http"):
-                href = "https://" + href
-
-        results.append({
-            "title": title,
-            "snippet": snippet,
-            "url": href,
-        })
+        if title and href:
+            results.append({"title": title, "snippet": snippet, "url": href})
 
     return results
 
@@ -130,36 +150,45 @@ def formatar_preco(valor):
     return f"R$ {inteiro_fmt},{centavos:02d}"
 
 
+def executar_query(query):
+    """Executa uma query e retorna resultados brutos."""
+    try:
+        return buscar_duckduckgo(query)
+    except Exception:
+        return []
+
+
 def buscar_produtos(produto):
     """Busca produtos com precos usando DuckDuckGo HTML."""
     resultados = []
     vistos = set()
-    erros = []
 
+    # Varias queries para maximizar resultados com precos
     queries = [
-        f"{produto} preço",
-        f"{produto} comprar online preço",
+        f"{produto} preço reais",
+        f"{produto} comprar R$",
+        f"{produto} site:amazon.com.br",
+        f"{produto} site:mercadolivre.com.br",
+        f"{produto} site:magazineluiza.com.br",
+        f"{produto} site:kabum.com.br",
+        f"{produto} menor preço Brasil",
+        f"{produto} oferta promoção preço",
     ]
 
-    for query in queries:
-        try:
-            items = buscar_duckduckgo(query)
-        except Exception as e:
-            erros.append(f"Busca '{query}': {e}")
-            continue
+    # Executa queries em paralelo (3 de cada vez)
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        all_items = pool.map(executar_query, queries)
 
+    for items in all_items:
         for item in items:
             try:
                 titulo = item["title"]
                 snippet = item["snippet"]
                 url = item["url"]
 
-                if not titulo or not url:
-                    continue
-
-                # Evita duplicatas
-                dominio = urlparse(url).netloc
-                chave_dup = dominio + urlparse(url).path
+                # Evita duplicatas por URL
+                parsed_url = urlparse(url)
+                chave_dup = parsed_url.netloc + parsed_url.path.rstrip("/")
                 if chave_dup in vistos:
                     continue
                 vistos.add(chave_dup)
@@ -175,9 +204,9 @@ def buscar_produtos(produto):
                 preco_texto = formatar_preco(preco_valor)
                 loja = identificar_loja(url)
 
-                # Limpa titulo
+                # Limpa titulo removendo precos e separadores finais
                 nome = re.sub(r'\s*[-|–]\s*R\$.*', '', titulo).strip()
-                nome = re.sub(r'\s*R\$\s*\d.*', '', nome).strip()
+                nome = re.sub(r'\s*R\$\s*[\d.].*', '', nome).strip()
                 nome = re.sub(r'\s*[-|–]\s*$', '', nome).strip()
                 if len(nome) < 5:
                     nome = titulo
@@ -188,14 +217,14 @@ def buscar_produtos(produto):
                     "preco_texto": preco_texto,
                     "loja": loja,
                     "link": url,
-                    "fonte": loja or "Web",
+                    "fonte": loja,
                     "imagem": "",
                     "avaliacao": "",
                 })
             except Exception:
                 continue
 
-    return resultados, erros
+    return resultados
 
 
 class handler(BaseHTTPRequestHandler):
@@ -209,13 +238,13 @@ class handler(BaseHTTPRequestHandler):
             return
 
         try:
-            resultados, erros = buscar_produtos(produto)
+            resultados = buscar_produtos(produto)
         except Exception as e:
             self._respond(200, {
                 "produto": produto,
                 "total": 0,
                 "resultados": [],
-                "avisos": [f"Erro geral: {e}"],
+                "avisos": [f"Erro: {e}"],
             })
             return
 
@@ -231,13 +260,11 @@ class handler(BaseHTTPRequestHandler):
                 visto.add(chave)
                 filtrados.append(r)
 
-        avisos = erros if erros else []
-
         self._respond(200, {
             "produto": produto,
             "total": len(filtrados),
             "resultados": filtrados,
-            "avisos": avisos,
+            "avisos": [],
         })
 
     def _respond(self, status, data):
