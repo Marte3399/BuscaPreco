@@ -25,7 +25,7 @@ def extrair_precos(texto):
     """Extrai todos os precos em R$ de um texto."""
     precos = []
 
-    # Padrao 1: R$ 1.299,90 / R$99,90
+    # Padrao 1: R$ 1.299,90 / R$99,90 / R$ 99.90
     for m in re.findall(r'R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})', texto):
         try:
             v = float(m.replace(".", "").replace(",", "."))
@@ -36,7 +36,7 @@ def extrair_precos(texto):
 
     # Padrao 2: "por 1.299,90" / "por 99,90" / "a partir de 99,90"
     if not precos:
-        for m in re.findall(r'(?:por|partir de|desde|price|preco)\s*:?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})', texto, re.IGNORECASE):
+        for m in re.findall(r'(?:por|partir de|desde|price|preco|preço|valor)\s*:?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})', texto, re.IGNORECASE):
             try:
                 v = float(m.replace(".", "").replace(",", "."))
                 if 1 < v < 200000:
@@ -50,6 +50,26 @@ def extrair_precos(texto):
             try:
                 v = float(m.replace(".", "").replace(",", "."))
                 if 10 < v < 200000:
+                    precos.append(v)
+            except ValueError:
+                pass
+
+    # Padrao 4: R$ com ponto como decimal (ex: "R$ 1299.90", "R$ 99.90")
+    if not precos:
+        for m in re.findall(r'R\$\s*(\d+\.\d{2})\b', texto):
+            try:
+                v = float(m)
+                if 1 < v < 200000:
+                    precos.append(v)
+            except ValueError:
+                pass
+
+    # Padrao 5: apenas "R$ 99" ou "R$ 1299" (sem centavos)
+    if not precos:
+        for m in re.findall(r'R\$\s*(\d{2,6})\b(?!\s*[.,]\d)', texto):
+            try:
+                v = float(m)
+                if 5 < v < 200000:
                     precos.append(v)
             except ValueError:
                 pass
@@ -91,6 +111,20 @@ LOJAS = {
     "apple": "Apple",
     "dell": "Dell",
     "lenovo": "Lenovo",
+    "visa": "Visanet",
+    "mercadolibre": "Mercado Livre",
+    "shoptime": "Shoptime",
+    "bemol": "Bemol",
+    "havan": "Havan",
+    "leroy": "Leroy Merlin",
+    "leroymerlin": "Leroy Merlin",
+    "madeira": "MadeiraMadeira",
+    "consul": "Consul",
+    "brastemp": "Brastemp",
+    "electrolux": "Electrolux",
+    "lg.com": "LG",
+    "motorola": "Motorola",
+    "xiaomi": "Xiaomi",
 }
 
 
@@ -158,9 +192,28 @@ def executar_query(query):
         return []
 
 
+# Dominios de lojas conhecidas para incluir resultados mesmo sem preco visivel
+DOMINIOS_LOJAS = [
+    "amazon.com.br", "mercadolivre.com.br", "magazineluiza.com.br",
+    "magalu.com.br", "americanas.com.br", "casasbahia.com.br",
+    "kabum.com.br", "pichau.com.br", "terabyteshop.com.br",
+    "shopee.com.br", "carrefour.com.br", "submarino.com.br",
+    "fastshop.com.br", "extra.com.br", "pontofrio.com.br",
+    "havan.com.br", "madeiramadeira.com.br", "colombo.com.br",
+    "netshoes.com.br", "centauro.com.br", "dafiti.com.br",
+]
+
+
+def eh_loja_conhecida(url):
+    """Verifica se a URL pertence a uma loja conhecida."""
+    domain = urlparse(url).netloc.lower()
+    return any(loja in domain for loja in DOMINIOS_LOJAS)
+
+
 def buscar_produtos(produto):
     """Busca produtos com precos usando DuckDuckGo HTML."""
     resultados = []
+    resultados_sem_preco = []
     vistos = set()
 
     # Varias queries para maximizar resultados com precos
@@ -173,10 +226,14 @@ def buscar_produtos(produto):
         f"{produto} site:kabum.com.br",
         f"{produto} menor preço Brasil",
         f"{produto} oferta promoção preço",
+        f"{produto} site:americanas.com.br",
+        f"{produto} site:casasbahia.com.br",
+        f"{produto} comprar online barato",
+        f"{produto} site:shopee.com.br",
     ]
 
-    # Executa queries em paralelo (3 de cada vez)
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    # Executa queries em paralelo (5 de cada vez para mais velocidade)
+    with ThreadPoolExecutor(max_workers=5) as pool:
         all_items = list(pool.map(executar_query, queries))
 
     for items in all_items:
@@ -197,11 +254,6 @@ def buscar_produtos(produto):
                 texto = f"{titulo} {snippet}"
                 precos = extrair_precos(texto)
 
-                if not precos:
-                    continue
-
-                preco_valor = min(precos)
-                preco_texto = formatar_preco(preco_valor)
                 loja = identificar_loja(url)
 
                 # Limpa titulo removendo precos e separadores finais
@@ -211,20 +263,35 @@ def buscar_produtos(produto):
                 if len(nome) < 5:
                     nome = titulo
 
-                resultados.append({
-                    "nome": nome,
-                    "preco": preco_valor,
-                    "preco_texto": preco_texto,
-                    "loja": loja,
-                    "link": url,
-                    "fonte": loja,
-                    "imagem": "",
-                    "avaliacao": "",
-                })
+                if precos:
+                    preco_valor = min(precos)
+                    preco_texto = formatar_preco(preco_valor)
+                    resultados.append({
+                        "nome": nome,
+                        "preco": preco_valor,
+                        "preco_texto": preco_texto,
+                        "loja": loja,
+                        "link": url,
+                        "fonte": loja,
+                        "imagem": "",
+                        "avaliacao": "",
+                    })
+                elif eh_loja_conhecida(url):
+                    # Inclui resultados de lojas conhecidas mesmo sem preco
+                    resultados_sem_preco.append({
+                        "nome": nome,
+                        "preco": 999999999,
+                        "preco_texto": "Ver na loja",
+                        "loja": loja,
+                        "link": url,
+                        "fonte": loja,
+                        "imagem": "",
+                        "avaliacao": "",
+                    })
             except Exception:
                 continue
 
-    return resultados
+    return resultados, resultados_sem_preco
 
 
 class handler(BaseHTTPRequestHandler):
@@ -238,7 +305,7 @@ class handler(BaseHTTPRequestHandler):
             return
 
         try:
-            resultados = buscar_produtos(produto)
+            resultados, resultados_sem_preco = buscar_produtos(produto)
         except Exception as e:
             self._respond(200, {
                 "produto": produto,
@@ -251,13 +318,27 @@ class handler(BaseHTTPRequestHandler):
         # Ordena por preco crescente
         resultados.sort(key=lambda x: x["preco"])
 
-        # Remove duplicatas (mesmo preco + mesma loja)
+        # Remove duplicatas (mesmo preco + mesma loja + nome similar)
         filtrados = []
         visto = set()
         for r in resultados:
-            chave = (r["preco"], r["loja"])
+            # Usa preco + loja + primeiras 30 chars do nome para dedup
+            nome_curto = r["nome"][:30].lower().strip()
+            chave = (r["preco"], r["loja"], nome_curto)
             if chave not in visto:
                 visto.add(chave)
+                filtrados.append(r)
+
+        # Adiciona resultados sem preco ao final (de lojas conhecidas)
+        for r in resultados_sem_preco:
+            nome_curto = r["nome"][:30].lower().strip()
+            chave_nome = (r["loja"], nome_curto)
+            # Evita duplicar se ja temos resultado com preco da mesma loja/produto
+            ja_tem = any(
+                (f["loja"], f["nome"][:30].lower().strip()) == chave_nome
+                for f in filtrados
+            )
+            if not ja_tem:
                 filtrados.append(r)
 
         self._respond(200, {
