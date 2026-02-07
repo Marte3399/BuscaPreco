@@ -1,6 +1,6 @@
 """
-Vercel Serverless Function - Busca de precos via SerpAPI (Google Shopping)
-e scraping direto da Amazon Brasil.
+Vercel Serverless Function - Busca de precos no Google Shopping e Amazon Brasil.
+Usa ScraperAPI como proxy para contornar bloqueio de IPs cloud.
 """
 
 import json
@@ -11,29 +11,32 @@ from urllib.parse import parse_qs, urlparse, quote_plus
 import requests
 from bs4 import BeautifulSoup
 
-SERPAPI_KEY = os.environ.get("SERPAPI_KEY", "")
+SCRAPER_API_KEY = os.environ.get("SCRAPER_API_KEY", "")
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/122.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Accept": (
-        "text/html,application/xhtml+xml,application/xml;q=0.9,"
-        "image/avif,image/webp,image/apng,*/*;q=0.8"
-    ),
-    "Accept-Encoding": "gzip, deflate, br",
-    "Sec-Ch-Ua": '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
-    "Sec-Ch-Ua-Mobile": "?0",
-    "Sec-Ch-Ua-Platform": '"Windows"',
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "Upgrade-Insecure-Requests": "1",
-}
+
+def _fetch(url):
+    """Faz requisicao via ScraperAPI (proxy) ou direto como fallback."""
+    if SCRAPER_API_KEY:
+        proxy_url = (
+            f"http://api.scraperapi.com"
+            f"?api_key={SCRAPER_API_KEY}"
+            f"&url={quote_plus(url)}"
+            f"&country_code=br"
+        )
+        resp = requests.get(proxy_url, timeout=30)
+    else:
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/122.0.0.0 Safari/537.36"
+            ),
+            "Accept-Language": "pt-BR,pt;q=0.9",
+        }
+        resp = requests.get(url, headers=headers, timeout=15)
+
+    resp.raise_for_status()
+    return resp.text
 
 
 def parse_preco(texto):
@@ -48,60 +51,95 @@ def parse_preco(texto):
         return None
 
 
-# ── Google Shopping via SerpAPI ──────────────────────────────────────────────
+# ── Google Shopping ──────────────────────────────────────────────────────────
 
 def buscar_google_shopping(produto, num_resultados=20):
-    """Busca precos no Google Shopping usando SerpAPI."""
-    if not SERPAPI_KEY:
-        return [], "SERPAPI_KEY nao configurada. Adicione nas variaveis de ambiente da Vercel."
-
-    params = {
-        "engine": "google_shopping",
-        "q": produto,
-        "hl": "pt",
-        "gl": "br",
-        "api_key": SERPAPI_KEY,
-    }
-
+    """Busca precos no Google Shopping."""
+    url = f"https://www.google.com.br/search?q={quote_plus(produto)}&tbm=shop&hl=pt-BR&gl=br"
     resultados = []
 
     try:
-        response = requests.get(
-            "https://serpapi.com/search.json",
-            params=params,
-            timeout=15,
-        )
-        response.raise_for_status()
-        data = response.json()
-    except requests.RequestException as e:
-        return resultados, f"Erro ao buscar Google Shopping: {e}"
+        html = _fetch(url)
+    except Exception as e:
+        return resultados, f"Erro ao acessar Google Shopping: {e}"
 
-    if "error" in data:
-        return resultados, f"SerpAPI erro: {data['error']}"
+    soup = BeautifulSoup(html, "html.parser")
 
-    shopping_results = data.get("shopping_results", [])
+    # Tenta varios seletores (Google muda frequentemente)
+    items = (
+        soup.select("div.sh-dgr__content")
+        or soup.select("div.sh-dlr__list-result")
+        or soup.select("div.xcR77")
+        or soup.select("div.i0X6df")
+        or soup.select("div.KZmu8e")
+    )
 
-    for item in shopping_results[:num_resultados]:
+    if not items:
+        # Fallback generico: procura blocos com preco R$
+        for div in soup.find_all("div"):
+            text = div.get_text()
+            if "R$" in text and len(text) < 500:
+                children = div.find_all("div", recursive=False)
+                if len(children) >= 2:
+                    items.append(div)
+            if len(items) >= num_resultados:
+                break
+
+    for item in items[:num_resultados]:
         try:
-            nome = item.get("title", "Produto sem nome")
+            # Nome do produto
+            nome_el = (
+                item.select_one("h3")
+                or item.select_one("h4")
+                or item.select_one("a[aria-label]")
+                or item.select_one("a")
+            )
+            nome = nome_el.get_text(strip=True) if nome_el else None
+            if not nome or len(nome) < 3:
+                continue
 
-            # SerpAPI retorna extracted_price como float
-            preco_valor = item.get("extracted_price")
-            if preco_valor is None or preco_valor <= 0:
-                # Tenta parsear do texto
-                preco_texto = item.get("price", "")
-                preco_valor = parse_preco(preco_texto)
-                if preco_valor is None:
-                    continue
+            # Preco
+            preco_el = (
+                item.select_one("span.a8Pemb")
+                or item.select_one("span.HRLxBb")
+                or item.select_one("span.kHxwFf")
+                or item.select_one("b")
+            )
+            if not preco_el:
+                for span in item.find_all("span"):
+                    txt = span.get_text(strip=True)
+                    if "R$" in txt and len(txt) < 30:
+                        preco_el = span
+                        break
 
-            preco_texto = item.get("price", f"R$ {preco_valor:,.2f}")
+            if not preco_el:
+                continue
 
-            loja = item.get("source", "Loja nao identificada")
-            link = item.get("link", item.get("product_link", ""))
-            thumbnail = item.get("thumbnail", "")
-            avaliacao = ""
-            if item.get("rating"):
-                avaliacao = f"{item['rating']} ({item.get('reviews', 0)} avaliacoes)"
+            preco_texto = preco_el.get_text(strip=True)
+            preco_valor = parse_preco(preco_texto)
+            if preco_valor is None:
+                continue
+
+            # Loja
+            loja_el = (
+                item.select_one("div.aULzUe")
+                or item.select_one("div.IuHnof")
+                or item.select_one("div.E5ocAb")
+            )
+            loja = loja_el.get_text(strip=True) if loja_el else ""
+
+            # Link
+            link_el = item.select_one("a[href]")
+            link = ""
+            if link_el:
+                href = link_el.get("href", "")
+                link = href if href.startswith("http") else "https://www.google.com" + href
+
+            # Imagem
+            img_el = item.select_one("img")
+            imagem = ""
+            if img_el:
+                imagem = img_el.get("src", "") or img_el.get("data-src", "")
 
             resultados.append({
                 "nome": nome,
@@ -110,8 +148,8 @@ def buscar_google_shopping(produto, num_resultados=20):
                 "loja": loja,
                 "link": link,
                 "fonte": "Google Shopping",
-                "imagem": thumbnail,
-                "avaliacao": avaliacao,
+                "imagem": imagem,
+                "avaliacao": "",
             })
         except Exception:
             continue
@@ -119,34 +157,30 @@ def buscar_google_shopping(produto, num_resultados=20):
     return resultados, None
 
 
-# ── Amazon Brasil via scraping ───────────────────────────────────────────────
+# ── Amazon Brasil ────────────────────────────────────────────────────────────
 
 def buscar_amazon(produto, num_resultados=20):
-    """Busca precos na Amazon Brasil via scraping."""
+    """Busca precos na Amazon Brasil."""
     url = f"https://www.amazon.com.br/s?k={quote_plus(produto)}"
     resultados = []
 
-    session = requests.Session()
-    session.headers.update(HEADERS)
-
     try:
-        # Primeiro acessa a home para pegar cookies
-        session.get("https://www.amazon.com.br", timeout=8)
-        response = session.get(url, timeout=12)
-        response.raise_for_status()
-    except requests.RequestException as e:
-        return resultados, f"Erro ao buscar Amazon: {e}"
+        html = _fetch(url)
+    except Exception as e:
+        return resultados, f"Erro ao acessar Amazon: {e}"
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    soup = BeautifulSoup(html, "html.parser")
+
     items = soup.select("div[data-component-type='s-search-result']")
-
     if not items:
-        # Fallback: tenta outros seletores
-        items = soup.select("div[data-asin]")
-        items = [i for i in items if i.get("data-asin", "").strip()]
+        items = [
+            el for el in soup.select("div[data-asin]")
+            if el.get("data-asin", "").strip()
+        ]
 
     for item in items[:num_resultados]:
         try:
+            # Nome
             nome_el = (
                 item.select_one("h2 a span")
                 or item.select_one("h2 span")
@@ -156,25 +190,25 @@ def buscar_amazon(produto, num_resultados=20):
             if not nome:
                 continue
 
-            # Preco: tenta multiplos seletores
-            preco_inteiro_el = item.select_one("span.a-price-whole")
-            preco_frac_el = item.select_one("span.a-price-fraction")
-
+            # Preco - metodo 1: partes separadas
             preco_valor = None
             preco_texto = ""
 
+            preco_inteiro_el = item.select_one("span.a-price-whole")
+            preco_frac_el = item.select_one("span.a-price-fraction")
+
             if preco_inteiro_el:
-                preco_inteiro = preco_inteiro_el.get_text(strip=True).rstrip(",").rstrip(".")
-                preco_inteiro = preco_inteiro.replace(".", "").replace(",", "")
+                preco_int = preco_inteiro_el.get_text(strip=True).rstrip(",.")
+                preco_int = preco_int.replace(".", "").replace(",", "")
                 preco_frac = preco_frac_el.get_text(strip=True) if preco_frac_el else "00"
                 try:
-                    preco_valor = float(f"{preco_inteiro}.{preco_frac}")
+                    preco_valor = float(f"{preco_int}.{preco_frac}")
                     preco_texto = f"R$ {preco_inteiro_el.get_text(strip=True)},{preco_frac}"
                 except ValueError:
                     pass
 
+            # Preco - metodo 2: span.a-offscreen
             if preco_valor is None:
-                # Fallback: tenta span.a-offscreen
                 offscreen = item.select_one("span.a-price span.a-offscreen")
                 if offscreen:
                     preco_texto = offscreen.get_text(strip=True)
@@ -183,15 +217,18 @@ def buscar_amazon(produto, num_resultados=20):
             if preco_valor is None or preco_valor <= 0:
                 continue
 
+            # Link
             link_el = item.select_one("h2 a[href]") or item.select_one("a.a-link-normal[href]")
             link = ""
             if link_el:
                 href = link_el.get("href", "")
                 link = href if href.startswith("http") else "https://www.amazon.com.br" + href
 
+            # Avaliacao
             rating_el = item.select_one("span.a-icon-alt")
             avaliacao = rating_el.get_text(strip=True) if rating_el else ""
 
+            # Imagem
             img_el = item.select_one("img.s-image")
             imagem = img_el.get("src", "") if img_el else ""
 
@@ -230,6 +267,11 @@ class handler(BaseHTTPRequestHandler):
         todos.sort(key=lambda x: x["preco"])
 
         avisos = []
+        if not SCRAPER_API_KEY:
+            avisos.append(
+                "SCRAPER_API_KEY nao configurada. Cadastre-se gratis em scraperapi.com "
+                "e adicione a chave nas variaveis de ambiente da Vercel."
+            )
         if erro_google:
             avisos.append(f"Google Shopping: {erro_google}")
         if erro_amazon:
