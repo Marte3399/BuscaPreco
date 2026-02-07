@@ -276,6 +276,43 @@
       text-transform: uppercase;
     }
 
+    /* Sort bar */
+    .sort-bar {
+      max-width: 900px;
+      margin: 0 auto 0.75rem;
+      padding: 0 1rem;
+      display: none;
+      justify-content: flex-end;
+    }
+
+    .sort-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .sort-btn:hover {
+      border-color: #38bdf8;
+      background: #1e3a5f;
+    }
+
+    .sort-btn .arrow {
+      font-size: 1rem;
+      transition: transform 0.2s;
+    }
+
+    .sort-btn .arrow.desc {
+      transform: rotate(180deg);
+    }
+
     .empty-state {
       text-align: center;
       padding: 4rem 1rem;
@@ -322,6 +359,14 @@
   <div class="avisos" id="avisos"></div>
   <div class="stats" id="stats" style="display: none;"></div>
 
+  <div class="sort-bar" id="sort-bar">
+    <button class="sort-btn" id="btn-sort" onclick="toggleSort()">
+      <span>Preco</span>
+      <span class="arrow" id="sort-arrow">&#9650;</span>
+      <span id="sort-label">Menor primeiro</span>
+    </button>
+  </div>
+
   <div class="loading" id="loading">
     <div class="spinner"></div>
     <p>Buscando os melhores precos...</p>
@@ -345,6 +390,12 @@
     const stats = document.getElementById('stats');
     const error = document.getElementById('error');
     const avisosEl = document.getElementById('avisos');
+    const sortBar = document.getElementById('sort-bar');
+    const sortArrow = document.getElementById('sort-arrow');
+    const sortLabel = document.getElementById('sort-label');
+
+    let currentItems = [];
+    let sortAsc = true; // true = crescente, false = decrescente
 
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') buscar();
@@ -352,6 +403,18 @@
 
     // Focus input on load
     input.focus();
+
+    function toggleSort() {
+      sortAsc = !sortAsc;
+      sortArrow.classList.toggle('desc', !sortAsc);
+      sortArrow.innerHTML = sortAsc ? '&#9650;' : '&#9660;';
+      sortLabel.textContent = sortAsc ? 'Menor primeiro' : 'Maior primeiro';
+
+      const sorted = [...currentItems].sort((a, b) =>
+        sortAsc ? a.preco - b.preco : b.preco - a.preco
+      );
+      renderResults(sorted);
+    }
 
     async function buscar() {
       const produto = input.value.trim();
@@ -366,7 +429,13 @@
       error.classList.remove('active');
       results.innerHTML = '';
       stats.style.display = 'none';
+      sortBar.style.display = 'none';
       avisosEl.innerHTML = '';
+      currentItems = [];
+      sortAsc = true;
+      sortArrow.classList.remove('desc');
+      sortArrow.innerHTML = '&#9650;';
+      sortLabel.textContent = 'Menor primeiro';
 
       try {
         const res = await fetch(`/api/buscar?q=${encodeURIComponent(produto)}`);
@@ -383,8 +452,13 @@
             .join('');
         }
 
+        currentItems = data.resultados;
         renderStats(data);
         renderResults(data.resultados);
+
+        if (data.resultados.length > 0) {
+          sortBar.style.display = 'flex';
+        }
       } catch (err) {
         error.textContent = `Erro ao buscar: ${err.message}`;
         error.classList.add('active');
