@@ -177,7 +177,7 @@ def buscar_produtos(produto):
 
     # Executa queries em paralelo (3 de cada vez)
     with ThreadPoolExecutor(max_workers=3) as pool:
-        all_items = pool.map(executar_query, queries)
+        all_items = list(pool.map(executar_query, queries))
 
     for items in all_items:
         for item in items:
