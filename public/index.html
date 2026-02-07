@@ -56,13 +56,8 @@
       transition: border-color 0.2s;
     }
 
-    .search-box input:focus {
-      border-color: #38bdf8;
-    }
-
-    .search-box input::placeholder {
-      color: #64748b;
-    }
+    .search-box input:focus { border-color: #38bdf8; }
+    .search-box input::placeholder { color: #64748b; }
 
     .search-box button {
       padding: 0.85rem 1.8rem;
@@ -77,9 +72,7 @@
       white-space: nowrap;
     }
 
-    .search-box button:hover {
-      background: #7dd3fc;
-    }
+    .search-box button:hover { background: #7dd3fc; }
 
     .search-box button:disabled {
       background: #475569;
@@ -87,12 +80,13 @@
       cursor: not-allowed;
     }
 
+    /* Stats */
     .stats {
       max-width: 900px;
       margin: 0 auto 1.5rem;
       padding: 0 1rem;
       display: flex;
-      gap: 1rem;
+      gap: 0.75rem;
       flex-wrap: wrap;
       justify-content: center;
     }
@@ -101,28 +95,46 @@
       background: #1e293b;
       border: 1px solid #334155;
       border-radius: 12px;
-      padding: 1rem 1.5rem;
+      padding: 0.8rem 1.3rem;
       text-align: center;
-      min-width: 160px;
+      min-width: 140px;
     }
 
     .stat-card .label {
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       color: #94a3b8;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
 
     .stat-card .value {
-      font-size: 1.4rem;
+      font-size: 1.3rem;
       font-weight: 700;
       color: #38bdf8;
-      margin-top: 0.25rem;
+      margin-top: 0.15rem;
     }
 
     .stat-card.menor .value { color: #4ade80; }
     .stat-card.maior .value { color: #f87171; }
 
+    /* Avisos */
+    .avisos {
+      max-width: 900px;
+      margin: 0 auto 1rem;
+      padding: 0 1rem;
+    }
+
+    .aviso {
+      background: #422006;
+      border: 1px solid #92400e;
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+      color: #fbbf24;
+    }
+
+    /* Loading */
     .loading {
       text-align: center;
       padding: 3rem 1rem;
@@ -141,8 +153,11 @@
       margin: 0 auto 1rem;
     }
 
+    .loading p { color: #94a3b8; }
+
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* Results */
     .results {
       max-width: 900px;
       margin: 0 auto;
@@ -153,32 +168,57 @@
       background: #1e293b;
       border: 1px solid #334155;
       border-radius: 12px;
-      padding: 1.2rem 1.5rem;
-      margin-bottom: 0.75rem;
-      display: flex;
-      align-items: center;
-      gap: 1.2rem;
+      padding: 1rem 1.2rem;
+      margin-bottom: 0.6rem;
       transition: border-color 0.2s;
     }
 
-    .result-card:hover {
-      border-color: #38bdf8;
-    }
+    .result-card:hover { border-color: #475569; }
 
     .result-card.melhor {
       border-color: #4ade80;
       box-shadow: 0 0 20px rgba(74, 222, 128, 0.08);
     }
 
-    .rank {
-      font-size: 1.1rem;
+    .result-link {
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .result-rank {
+      font-size: 1rem;
       font-weight: 700;
       color: #64748b;
-      min-width: 32px;
+      min-width: 28px;
       text-align: center;
     }
 
-    .result-card.melhor .rank { color: #4ade80; }
+    .result-card.melhor .result-rank { color: #4ade80; }
+
+    .result-img {
+      width: 64px;
+      height: 64px;
+      border-radius: 8px;
+      object-fit: contain;
+      background: #fff;
+      flex-shrink: 0;
+    }
+
+    .result-img-placeholder {
+      width: 64px;
+      height: 64px;
+      border-radius: 8px;
+      background: #334155;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      font-size: 1.5rem;
+    }
 
     .result-info {
       flex: 1;
@@ -186,56 +226,54 @@
     }
 
     .result-nome {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       font-weight: 500;
       color: #f1f5f9;
-      margin-bottom: 0.35rem;
+      margin-bottom: 0.3rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
       overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
     }
 
     .result-meta {
       display: flex;
-      gap: 0.75rem;
+      gap: 0.6rem;
       flex-wrap: wrap;
-      font-size: 0.82rem;
+      align-items: center;
+      font-size: 0.78rem;
       color: #94a3b8;
     }
 
     .badge {
-      padding: 0.15rem 0.6rem;
+      padding: 0.12rem 0.5rem;
       border-radius: 6px;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-weight: 600;
     }
 
-    .badge-google {
-      background: #1d4ed8;
-      color: #bfdbfe;
-    }
-
-    .badge-amazon {
-      background: #b45309;
-      color: #fef3c7;
-    }
+    .badge-google { background: #1d4ed8; color: #bfdbfe; }
+    .badge-amazon { background: #b45309; color: #fef3c7; }
 
     .result-preco {
-      font-size: 1.3rem;
+      font-size: 1.25rem;
       font-weight: 700;
       color: #38bdf8;
       white-space: nowrap;
+      text-align: right;
+      min-width: 110px;
     }
 
     .result-card.melhor .result-preco { color: #4ade80; }
 
-    .result-link {
-      text-decoration: none;
-      color: inherit;
-      display: flex;
-      align-items: center;
-      gap: 1.2rem;
-      width: 100%;
+    .tag-melhor {
+      background: #166534;
+      color: #4ade80;
+      padding: 0.12rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
     }
 
     .empty-state {
@@ -246,32 +284,23 @@
 
     .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
 
-    .error {
+    .error-msg {
       text-align: center;
       padding: 2rem 1rem;
       color: #f87171;
       display: none;
     }
 
-    .error.active { display: block; }
+    .error-msg.active { display: block; }
 
-    .tag-melhor {
-      background: #166534;
-      color: #4ade80;
-      padding: 0.15rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      margin-left: 0.5rem;
-    }
-
+    /* Responsive */
     @media (max-width: 600px) {
       .header h1 { font-size: 1.5rem; }
       .search-box { flex-direction: column; }
       .search-box button { width: 100%; }
-      .result-card { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
-      .result-preco { align-self: flex-end; }
+      .result-link { flex-wrap: wrap; }
+      .result-img, .result-img-placeholder { width: 48px; height: 48px; }
+      .result-preco { min-width: auto; font-size: 1.1rem; }
       .stats { flex-direction: column; align-items: center; }
     }
   </style>
@@ -285,19 +314,21 @@
 
   <div class="search-container">
     <div class="search-box">
-      <input type="text" id="input-produto" placeholder="Digite o produto (ex: iPhone 15, Air Fryer...)" autocomplete="off">
+      <input type="text" id="input-produto" placeholder="Ex: iPhone 15, Air Fryer, Notebook..." autocomplete="off">
       <button id="btn-buscar" onclick="buscar()">Buscar</button>
     </div>
   </div>
 
+  <div class="avisos" id="avisos"></div>
   <div class="stats" id="stats" style="display: none;"></div>
 
   <div class="loading" id="loading">
     <div class="spinner"></div>
     <p>Buscando os melhores precos...</p>
+    <p style="font-size: 0.8rem; margin-top: 0.5rem; color: #64748b;">Isso pode levar alguns segundos</p>
   </div>
 
-  <div class="error" id="error"></div>
+  <div class="error-msg" id="error"></div>
 
   <div class="results" id="results">
     <div class="empty-state" id="empty">
@@ -313,21 +344,29 @@
     const results = document.getElementById('results');
     const stats = document.getElementById('stats');
     const error = document.getElementById('error');
-    const empty = document.getElementById('empty');
+    const avisosEl = document.getElementById('avisos');
 
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') buscar();
     });
 
+    // Focus input on load
+    input.focus();
+
     async function buscar() {
       const produto = input.value.trim();
-      if (!produto) return;
+      if (!produto) {
+        input.focus();
+        return;
+      }
 
       btn.disabled = true;
+      btn.textContent = 'Buscando...';
       loading.classList.add('active');
       error.classList.remove('active');
       results.innerHTML = '';
       stats.style.display = 'none';
+      avisosEl.innerHTML = '';
 
       try {
         const res = await fetch(`/api/buscar?q=${encodeURIComponent(produto)}`);
@@ -337,6 +376,13 @@
           throw new Error(data.erro);
         }
 
+        // Mostra avisos se houver
+        if (data.avisos && data.avisos.length > 0) {
+          avisosEl.innerHTML = data.avisos
+            .map(a => `<div class="aviso">${escapeHtml(a)}</div>`)
+            .join('');
+        }
+
         renderStats(data);
         renderResults(data.resultados);
       } catch (err) {
@@ -344,6 +390,7 @@
         error.classList.add('active');
       } finally {
         btn.disabled = false;
+        btn.textContent = 'Buscar';
         loading.classList.remove('active');
       }
     }
@@ -359,7 +406,7 @@
 
       stats.innerHTML = `
         <div class="stat-card">
-          <div class="label">Total encontrado</div>
+          <div class="label">Total</div>
           <div class="value">${data.total}</div>
         </div>
         <div class="stat-card">
@@ -372,11 +419,11 @@
         </div>
         <div class="stat-card menor">
           <div class="label">Menor preco</div>
-          <div class="value">${menor.preco_texto}</div>
+          <div class="value">${escapeHtml(menor.preco_texto)}</div>
         </div>
         <div class="stat-card maior">
           <div class="label">Maior preco</div>
-          <div class="value">${maior.preco_texto}</div>
+          <div class="value">${escapeHtml(maior.preco_texto)}</div>
         </div>
       `;
       stats.style.display = 'flex';
@@ -387,7 +434,10 @@
         results.innerHTML = `
           <div class="empty-state">
             <div class="icon">&#128533;</div>
-            <p>Nenhum resultado encontrado. Tente outro termo.</p>
+            <p>Nenhum resultado encontrado.</p>
+            <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #94a3b8;">
+              Verifique os avisos acima ou tente outro termo de busca.
+            </p>
           </div>
         `;
         return;
@@ -396,34 +446,40 @@
       results.innerHTML = items.map((item, i) => {
         const isMelhor = i === 0;
         const badgeClass = item.fonte === 'Amazon' ? 'badge-amazon' : 'badge-google';
-        const linkTag = item.link
-          ? `<a class="result-link" href="${item.link}" target="_blank" rel="noopener">`
-          : '<div class="result-link">';
-        const linkClose = item.link ? '</a>' : '</div>';
+
+        const imgHtml = item.imagem
+          ? `<img class="result-img" src="${escapeHtml(item.imagem)}" alt="" loading="lazy">`
+          : `<div class="result-img-placeholder">&#128722;</div>`;
+
+        const wrapper = item.link
+          ? [`<a class="result-link" href="${escapeHtml(item.link)}" target="_blank" rel="noopener">`, '</a>']
+          : ['<div class="result-link">', '</div>'];
 
         return `
           <div class="result-card${isMelhor ? ' melhor' : ''}">
-            ${linkTag}
-              <div class="rank">${i + 1}</div>
+            ${wrapper[0]}
+              <div class="result-rank">${i + 1}</div>
+              ${imgHtml}
               <div class="result-info">
                 <div class="result-nome">
                   ${escapeHtml(item.nome)}
-                  ${isMelhor ? '<span class="tag-melhor">Melhor preco</span>' : ''}
                 </div>
                 <div class="result-meta">
                   <span class="badge ${badgeClass}">${escapeHtml(item.fonte)}</span>
                   <span>${escapeHtml(item.loja || '')}</span>
                   ${item.avaliacao ? `<span>${escapeHtml(item.avaliacao)}</span>` : ''}
+                  ${isMelhor ? '<span class="tag-melhor">Melhor preco</span>' : ''}
                 </div>
               </div>
               <div class="result-preco">${escapeHtml(item.preco_texto)}</div>
-            ${linkClose}
+            ${wrapper[1]}
           </div>
         `;
       }).join('');
     }
 
     function escapeHtml(text) {
+      if (!text) return '';
       const el = document.createElement('span');
       el.textContent = text;
       return el.innerHTML;
