@@ -5,6 +5,7 @@ Usa ScraperAPI como proxy para contornar bloqueio de IPs cloud.
 
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse, quote_plus
 
@@ -260,8 +261,12 @@ class handler(BaseHTTPRequestHandler):
             self._respond(400, {"erro": "Parametro 'q' e obrigatorio."})
             return
 
-        resultados_google, erro_google = buscar_google_shopping(produto)
-        resultados_amazon, erro_amazon = buscar_amazon(produto)
+        # Busca em paralelo para nao estourar timeout da Vercel
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            fut_google = executor.submit(buscar_google_shopping, produto)
+            fut_amazon = executor.submit(buscar_amazon, produto)
+            resultados_google, erro_google = fut_google.result()
+            resultados_amazon, erro_amazon = fut_amazon.result()
 
         todos = resultados_google + resultados_amazon
         todos.sort(key=lambda x: x["preco"])
