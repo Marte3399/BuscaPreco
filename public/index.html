@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BuscaPreco - Comparador de Precos</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border-bottom: 1px solid #334155;
+      padding: 2rem 1rem;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-bottom: 0.25rem;
+    }
+
+    .header p {
+      color: #94a3b8;
+      font-size: 0.95rem;
+    }
+
+    .search-container {
+      max-width: 640px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .search-box {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .search-box input {
+      flex: 1;
+      padding: 0.85rem 1.2rem;
+      border: 2px solid #334155;
+      border-radius: 12px;
+      background: #1e293b;
+      color: #f1f5f9;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-box input:focus {
+      border-color: #38bdf8;
+    }
+
+    .search-box input::placeholder {
+      color: #64748b;
+    }
+
+    .search-box button {
+      padding: 0.85rem 1.8rem;
+      background: #38bdf8;
+      color: #0f172a;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .search-box button:hover {
+      background: #7dd3fc;
+    }
+
+    .search-box button:disabled {
+      background: #475569;
+      color: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    .stats {
+      max-width: 900px;
+      margin: 0 auto 1.5rem;
+      padding: 0 1rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .stat-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      text-align: center;
+      min-width: 160px;
+    }
+
+    .stat-card .label {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-card .value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-top: 0.25rem;
+    }
+
+    .stat-card.menor .value { color: #4ade80; }
+    .stat-card.maior .value { color: #f87171; }
+
+    .loading {
+      text-align: center;
+      padding: 3rem 1rem;
+      display: none;
+    }
+
+    .loading.active { display: block; }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #334155;
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .results {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 1rem 3rem;
+    }
+
+    .result-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 1.2rem 1.5rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      transition: border-color 0.2s;
+    }
+
+    .result-card:hover {
+      border-color: #38bdf8;
+    }
+
+    .result-card.melhor {
+      border-color: #4ade80;
+      box-shadow: 0 0 20px rgba(74, 222, 128, 0.08);
+    }
+
+    .rank {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #64748b;
+      min-width: 32px;
+      text-align: center;
+    }
+
+    .result-card.melhor .rank { color: #4ade80; }
+
+    .result-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .result-nome {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: #f1f5f9;
+      margin-bottom: 0.35rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .result-meta {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      font-size: 0.82rem;
+      color: #94a3b8;
+    }
+
+    .badge {
+      padding: 0.15rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-google {
+      background: #1d4ed8;
+      color: #bfdbfe;
+    }
+
+    .badge-amazon {
+      background: #b45309;
+      color: #fef3c7;
+    }
+
+    .result-preco {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #38bdf8;
+      white-space: nowrap;
+    }
+
+    .result-card.melhor .result-preco { color: #4ade80; }
+
+    .result-link {
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      width: 100%;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 4rem 1rem;
+      color: #64748b;
+    }
+
+    .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+
+    .error {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: #f87171;
+      display: none;
+    }
+
+    .error.active { display: block; }
+
+    .tag-melhor {
+      background: #166534;
+      color: #4ade80;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-left: 0.5rem;
+    }
+
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.5rem; }
+      .search-box { flex-direction: column; }
+      .search-box button { width: 100%; }
+      .result-card { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+      .result-preco { align-self: flex-end; }
+      .stats { flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>BuscaPreco</h1>
+    <p>Compare precos entre Google Shopping e Amazon</p>
+  </div>
+
+  <div class="search-container">
+    <div class="search-box">
+      <input type="text" id="input-produto" placeholder="Digite o produto (ex: iPhone 15, Air Fryer...)" autocomplete="off">
+      <button id="btn-buscar" onclick="buscar()">Buscar</button>
+    </div>
+  </div>
+
+  <div class="stats" id="stats" style="display: none;"></div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Buscando os melhores precos...</p>
+  </div>
+
+  <div class="error" id="error"></div>
+
+  <div class="results" id="results">
+    <div class="empty-state" id="empty">
+      <div class="icon">&#128269;</div>
+      <p>Pesquise um produto para comparar precos</p>
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById('input-produto');
+    const btn = document.getElementById('btn-buscar');
+    const loading = document.getElementById('loading');
+    const results = document.getElementById('results');
+    const stats = document.getElementById('stats');
+    const error = document.getElementById('error');
+    const empty = document.getElementById('empty');
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') buscar();
+    });
+
+    async function buscar() {
+      const produto = input.value.trim();
+      if (!produto) return;
+
+      btn.disabled = true;
+      loading.classList.add('active');
+      error.classList.remove('active');
+      results.innerHTML = '';
+      stats.style.display = 'none';
+
+      try {
+        const res = await fetch(`/api/buscar?q=${encodeURIComponent(produto)}`);
+        const data = await res.json();
+
+        if (data.erro) {
+          throw new Error(data.erro);
+        }
+
+        renderStats(data);
+        renderResults(data.resultados);
+      } catch (err) {
+        error.textContent = `Erro ao buscar: ${err.message}`;
+        error.classList.add('active');
+      } finally {
+        btn.disabled = false;
+        loading.classList.remove('active');
+      }
+    }
+
+    function renderStats(data) {
+      if (data.total === 0) {
+        stats.style.display = 'none';
+        return;
+      }
+
+      const menor = data.resultados[0];
+      const maior = data.resultados[data.resultados.length - 1];
+
+      stats.innerHTML = `
+        <div class="stat-card">
+          <div class="label">Total encontrado</div>
+          <div class="value">${data.total}</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Google Shopping</div>
+          <div class="value">${data.google_shopping}</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Amazon</div>
+          <div class="value">${data.amazon}</div>
+        </div>
+        <div class="stat-card menor">
+          <div class="label">Menor preco</div>
+          <div class="value">${menor.preco_texto}</div>
+        </div>
+        <div class="stat-card maior">
+          <div class="label">Maior preco</div>
+          <div class="value">${maior.preco_texto}</div>
+        </div>
+      `;
+      stats.style.display = 'flex';
+    }
+
+    function renderResults(items) {
+      if (items.length === 0) {
+        results.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">&#128533;</div>
+            <p>Nenhum resultado encontrado. Tente outro termo.</p>
+          </div>
+        `;
+        return;
+      }
+
+      results.innerHTML = items.map((item, i) => {
+        const isMelhor = i === 0;
+        const badgeClass = item.fonte === 'Amazon' ? 'badge-amazon' : 'badge-google';
+        const linkTag = item.link
+          ? `<a class="result-link" href="${item.link}" target="_blank" rel="noopener">`
+          : '<div class="result-link">';
+        const linkClose = item.link ? '</a>' : '</div>';
+
+        return `
+          <div class="result-card${isMelhor ? ' melhor' : ''}">
+            ${linkTag}
+              <div class="rank">${i + 1}</div>
+              <div class="result-info">
+                <div class="result-nome">
+                  ${escapeHtml(item.nome)}
+                  ${isMelhor ? '<span class="tag-melhor">Melhor preco</span>' : ''}
+                </div>
+                <div class="result-meta">
+                  <span class="badge ${badgeClass}">${escapeHtml(item.fonte)}</span>
+                  <span>${escapeHtml(item.loja || '')}</span>
+                  ${item.avaliacao ? `<span>${escapeHtml(item.avaliacao)}</span>` : ''}
+                </div>
+              </div>
+              <div class="result-preco">${escapeHtml(item.preco_texto)}</div>
+            ${linkClose}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(text) {
+      const el = document.createElement('span');
+      el.textContent = text;
+      return el.innerHTML;
+    }
+  </script>
+
+</body>
+</html>
