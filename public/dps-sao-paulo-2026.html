@@ -87,6 +87,97 @@ tfoot td.num{text-align:right;}
 .empty-msg{padding:30px; text-align:center; color:var(--muted);}
 footer{text-align:center; color:var(--muted); font-size:.78rem; padding:20px 0 30px;}
 details.more-filters summary{cursor:pointer; font-size:.85rem; color:var(--accent); font-weight:600; margin-bottom:10px;}
+
+.tabs{display:flex; gap:4px; margin-bottom:16px; border-bottom:1px solid var(--border);}
+.tab-btn{
+  padding:9px 16px; border:none; background:transparent; font-size:.9rem; font-weight:600;
+  color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px;
+}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--accent); border-bottom-color:var(--accent);}
+.tab-panel[hidden]{display:none;}
+
+.compare-layout{display:grid; grid-template-columns:minmax(240px,320px) 1fr; gap:18px; align-items:start;}
+@media (max-width: 860px){ .compare-layout{grid-template-columns:1fr;} }
+
+.value-list{
+  max-height:280px; overflow-y:auto; border:1px solid var(--border); border-radius:8px;
+  margin-top:10px; background:#fff;
+}
+.value-item{
+  display:flex; align-items:center; gap:8px; padding:6px 10px; font-size:.83rem;
+  border-bottom:1px solid var(--border); cursor:pointer;
+}
+.value-item:last-child{border-bottom:none;}
+.value-item:hover{background:var(--row-hover);}
+.value-item input{flex:none;}
+.value-item .vname{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.value-item .vcount{color:var(--muted); font-size:.76rem; flex:none;}
+.value-item.disabled{opacity:.45; cursor:not-allowed;}
+.list-note{padding:8px 10px; font-size:.76rem; color:var(--muted); font-style:italic;}
+
+.chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
+.chip{
+  display:flex; align-items:center; gap:6px; padding:5px 8px 5px 10px; border-radius:999px;
+  background:var(--head-bg); border:1px solid var(--border); font-size:.8rem; max-width:260px;
+}
+.chip .vname{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.chip button{
+  border:none; background:none; cursor:pointer; color:var(--muted); font-size:1rem; line-height:1;
+  padding:0 2px;
+}
+.chip button:hover{color:var(--text);}
+.dot{width:10px; height:10px; border-radius:50%; flex:none; display:inline-block;}
+
+.limit-note{font-size:.78rem; color:var(--muted); margin-top:8px;}
+
+.empty-state{padding:40px 20px; text-align:center; color:var(--muted); font-size:.9rem;}
+
+.compare-summary{display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px;}
+.stat-card{
+  flex:1 1 180px; border:1px solid var(--border); border-radius:8px; padding:10px 12px; background:#fff;
+}
+.stat-card .stat-head{display:flex; align-items:center; gap:7px; font-weight:600; font-size:.83rem; margin-bottom:6px;}
+.stat-card .stat-head .vname{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.stat-card .stat-line{font-size:.78rem; color:var(--muted);}
+.stat-card .stat-line b{color:var(--text);}
+
+.compare-grid{
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:14px; margin-bottom:20px;
+}
+.compare-card{border:1px solid var(--border); border-radius:8px; padding:12px 14px; background:#fff;}
+.compare-card h3{margin:0 0 10px; font-size:.85rem; color:var(--text);}
+.bar-row{display:flex; align-items:center; gap:8px; padding:3px 0; outline:none;}
+.bar-row .bar-label{
+  flex:0 0 42%; max-width:42%; font-size:.72rem; color:var(--muted); overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:5px;
+}
+.bar-row .bar-track{flex:1; background:var(--head-bg); border-radius:4px; height:16px; position:relative;}
+.bar-row .bar-fill{
+  height:100%; border-radius:0 4px 4px 0; min-width:2px; transition:width .15s ease;
+}
+.bar-row .bar-value{
+  flex:0 0 auto; font-size:.76rem; color:var(--text); font-variant-numeric:tabular-nums; min-width:44px; text-align:right;
+}
+.bar-row:focus-visible .bar-track{outline:2px solid var(--accent); outline-offset:1px;}
+
+.compare-table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:8px; background:#fff;}
+table.compare-table{border-collapse:collapse; width:100%; font-size:.85rem;}
+table.compare-table th, table.compare-table td{padding:8px 12px; border-bottom:1px solid var(--border); white-space:nowrap;}
+table.compare-table thead th{background:var(--head-bg); text-align:right;}
+table.compare-table thead th:first-child{text-align:left;}
+table.compare-table thead th .vname{display:inline-flex; align-items:center; gap:6px;}
+table.compare-table td{text-align:right; font-variant-numeric:tabular-nums;}
+table.compare-table td:first-child{text-align:left; color:var(--muted); font-variant-numeric:normal;}
+table.compare-table td.best{font-weight:700; background:var(--accent-soft);}
+
+#tooltip{
+  position:fixed; pointer-events:none; background:#1c2430; color:#fff; padding:6px 9px;
+  border-radius:6px; font-size:.76rem; z-index:50; opacity:0; transform:translateY(4px);
+  transition:opacity .1s ease; max-width:240px;
+}
+#tooltip.show{opacity:1;}
+#tooltip .tt-value{font-weight:700;}
 </style>
 </head>
 <body>
@@ -97,6 +188,13 @@ details.more-filters summary{cursor:pointer; font-size:.85rem; color:var(--accen
 </header>
 
 <div class="wrap">
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="tabela" type="button">Tabela</button>
+    <button class="tab-btn" data-tab="comparar" type="button">Comparação</button>
+  </div>
+
+  <section id="tab-tabela" class="tab-panel">
 
   <div class="panel">
     <h2>Filtros</h2>
@@ -146,6 +244,48 @@ details.more-filters summary{cursor:pointer; font-size:.85rem; color:var(--accen
     </table>
   </div>
   <footer>Dados brutos: planilha base_dps_sao_paulo_2026_preenchida.xlsx &middot; gerado automaticamente</footer>
+  </section>
+
+  <section id="tab-comparar" class="tab-panel" hidden>
+
+  <div class="panel">
+    <h2>Montar comparação <small>selecione até 6 grupos (por departamento, seccional, município, tipo de unidade ou uma delegacia específica)</small></h2>
+    <div class="compare-layout">
+      <div>
+        <div class="filters-grid" style="grid-template-columns:1fr;">
+          <div class="field">
+            <label for="cmp-dim">Comparar por</label>
+            <select id="cmp-dim">
+              <option value="departamento">Departamento</option>
+              <option value="seccional">Seccional</option>
+              <option value="municipio">Município</option>
+              <option value="tipo_unidade">Tipo de unidade</option>
+              <option value="unidade">Delegacia (unidade individual)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="cmp-search">Buscar</label>
+            <input type="text" id="cmp-search" placeholder="Filtrar valores...">
+          </div>
+        </div>
+        <div class="value-list" id="cmp-value-list"></div>
+        <div class="limit-note" id="cmp-limit-note"></div>
+      </div>
+      <div>
+        <label style="font-size:.75rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.02em;">Grupos selecionados</label>
+        <div class="chips" id="cmp-chips"></div>
+        <div class="toolbar" style="margin-top:14px;">
+          <button class="reset" id="cmp-clear">Limpar comparação</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="cmp-output"></div>
+
+  </section>
+
+  <div id="tooltip"></div>
 </div>
 
 <script>
@@ -360,6 +500,340 @@ document.getElementById('resetBtn').addEventListener('click', () => {
 });
 
 render();
+
+// ---------- Tabs ----------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-tabela').hidden = btn.dataset.tab !== 'tabela';
+    document.getElementById('tab-comparar').hidden = btn.dataset.tab !== 'comparar';
+  });
+});
+
+// ---------- Comparação ----------
+const SERIES_COLORS = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300'];
+const MAX_GROUPS = 6;
+const MAX_LIST_ITEMS = 80;
+
+const DIMENSIONS = {
+  departamento: { label: 'Departamento', col: 'departamento' },
+  seccional: { label: 'Seccional', col: 'seccional' },
+  municipio: { label: 'Município', col: 'municipio' },
+  tipo_unidade: { label: 'Tipo de unidade', col: 'tipo_unidade' },
+  unidade: { label: 'Delegacia (unidade individual)', col: 'nome_unidade' }
+};
+
+let compareGroups = []; // {key, dimKey, value, label}
+
+function groupKey(dimKey, value){ return dimKey + '|' + value; }
+
+function dimensionEntries(dimKey){
+  const col = DIMENSIONS[dimKey].col;
+  const ci = idx[col];
+  if (dimKey === 'unidade'){
+    return ROWS.map(r => ({
+      value: r[ci],
+      label: r[ci] + ' — ' + r[idx.municipio],
+      count: 1
+    }));
+  }
+  const counts = new Map();
+  ROWS.forEach(r => {
+    const v = r[ci];
+    counts.set(v, (counts.get(v) || 0) + 1);
+  });
+  return Array.from(counts.entries()).map(([value, count]) => ({ value, label: value, count }));
+}
+
+function rowsForGroup(g){
+  const ci = idx[DIMENSIONS[g.dimKey].col];
+  return ROWS.filter(r => r[ci] === g.value);
+}
+
+function renderValueList(){
+  const dimKey = document.getElementById('cmp-dim').value;
+  const search = document.getElementById('cmp-search').value.trim().toLowerCase();
+  let entries = dimensionEntries(dimKey);
+  if (search) entries = entries.filter(e => e.label.toLowerCase().includes(search));
+  entries.sort((a,b) => a.label.localeCompare(b.label, 'pt-BR'));
+
+  const total = entries.length;
+  const truncated = total > MAX_LIST_ITEMS;
+  entries = entries.slice(0, MAX_LIST_ITEMS);
+
+  const listEl = document.getElementById('cmp-value-list');
+  listEl.innerHTML = '';
+  const atMax = compareGroups.length >= MAX_GROUPS;
+
+  entries.forEach(e => {
+    const key = groupKey(dimKey, e.value);
+    const checked = compareGroups.some(g => g.key === key);
+    const item = document.createElement('label');
+    item.className = 'value-item' + (!checked && atMax ? ' disabled' : '');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = checked;
+    cb.disabled = !checked && atMax;
+    cb.addEventListener('change', () => {
+      if (cb.checked) addGroup(dimKey, e.value, e.label);
+      else removeGroup(key);
+    });
+    const name = document.createElement('span');
+    name.className = 'vname';
+    name.textContent = e.label;
+    name.title = e.label;
+    const count = document.createElement('span');
+    count.className = 'vcount';
+    count.textContent = '(' + e.count + ')';
+    item.appendChild(cb);
+    item.appendChild(name);
+    item.appendChild(count);
+    listEl.appendChild(item);
+  });
+
+  if (entries.length === 0){
+    const note = document.createElement('div');
+    note.className = 'list-note';
+    note.textContent = 'Nenhum valor encontrado.';
+    listEl.appendChild(note);
+  }
+
+  document.getElementById('cmp-limit-note').textContent = truncated
+    ? `Mostrando ${MAX_LIST_ITEMS} de ${total} resultados — refine a busca para ver outros.`
+    : '';
+}
+
+function addGroup(dimKey, value, label){
+  if (compareGroups.length >= MAX_GROUPS) return;
+  const key = groupKey(dimKey, value);
+  if (compareGroups.some(g => g.key === key)) return;
+  compareGroups.push({ key, dimKey, value, label });
+  renderValueList();
+  renderChips();
+  renderCompareOutput();
+}
+
+function removeGroup(key){
+  compareGroups = compareGroups.filter(g => g.key !== key);
+  renderValueList();
+  renderChips();
+  renderCompareOutput();
+}
+
+function renderChips(){
+  const chipsEl = document.getElementById('cmp-chips');
+  chipsEl.innerHTML = '';
+  compareGroups.forEach((g, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = SERIES_COLORS[i];
+    const name = document.createElement('span');
+    name.className = 'vname';
+    name.textContent = g.label;
+    name.title = g.label;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '×';
+    btn.setAttribute('aria-label', 'Remover ' + g.label);
+    btn.addEventListener('click', () => removeGroup(g.key));
+    chip.appendChild(dot);
+    chip.appendChild(name);
+    chip.appendChild(btn);
+    chipsEl.appendChild(chip);
+  });
+}
+
+const tooltipEl = document.getElementById('tooltip');
+function showTooltip(target, html){
+  tooltipEl.innerHTML = html;
+  tooltipEl.classList.add('show');
+  positionTooltip(target);
+}
+function positionTooltip(target){
+  const r = target.getBoundingClientRect();
+  tooltipEl.style.left = Math.min(r.left, window.innerWidth - tooltipEl.offsetWidth - 12) + 'px';
+  tooltipEl.style.top = Math.max(r.top - tooltipEl.offsetHeight - 8, 8) + 'px';
+}
+function hideTooltip(){ tooltipEl.classList.remove('show'); }
+
+function renderCompareOutput(){
+  const out = document.getElementById('cmp-output');
+  out.innerHTML = '';
+
+  if (compareGroups.length < 2){
+    const empty = document.createElement('div');
+    empty.className = 'empty-state panel';
+    empty.textContent = compareGroups.length === 0
+      ? 'Selecione dois ou mais grupos ao lado para comparar seus indicadores (ex.: uma seccional da zona norte com uma da zona leste).'
+      : 'Selecione pelo menos mais um grupo para comparar.';
+    out.appendChild(empty);
+    return;
+  }
+
+  const groupsData = compareGroups.map((g, i) => {
+    const rows = rowsForGroup(g);
+    const sums = {};
+    NUM_COLS.forEach(c => { sums[c] = rows.reduce((acc, r) => acc + (r[idx[c]] || 0), 0); });
+    const municipios = new Set(rows.map(r => r[idx.municipio]));
+    return { ...g, color: SERIES_COLORS[i], rows, sums, unidades: rows.length, municipios: municipios.size };
+  });
+
+  // summary cards
+  const summary = document.createElement('div');
+  summary.className = 'compare-summary';
+  groupsData.forEach(g => {
+    const card = document.createElement('div');
+    card.className = 'stat-card';
+    const head = document.createElement('div');
+    head.className = 'stat-head';
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = g.color;
+    const name = document.createElement('span');
+    name.className = 'vname';
+    name.textContent = g.label;
+    name.title = g.label;
+    head.appendChild(dot);
+    head.appendChild(name);
+    const line = document.createElement('div');
+    line.className = 'stat-line';
+    line.innerHTML = `<b>${g.unidades.toLocaleString('pt-BR')}</b> unidade(s) &middot; <b>${g.municipios.toLocaleString('pt-BR')}</b> município(s)`;
+    card.appendChild(head);
+    card.appendChild(line);
+    summary.appendChild(card);
+  });
+  out.appendChild(summary);
+
+  // chart grid (small multiples, one per indicator)
+  const grid = document.createElement('div');
+  grid.className = 'compare-grid';
+  NUM_COLS.forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'compare-card';
+    const h3 = document.createElement('h3');
+    h3.textContent = LABELS[c] || c;
+    card.appendChild(h3);
+
+    const maxVal = Math.max(1, ...groupsData.map(g => g.sums[c]));
+    groupsData.forEach(g => {
+      const row = document.createElement('div');
+      row.className = 'bar-row';
+      row.tabIndex = 0;
+      const val = g.sums[c];
+      const pct = Math.max(val > 0 ? 2 : 0, (val / maxVal) * 100);
+
+      const label = document.createElement('div');
+      label.className = 'bar-label';
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.style.background = g.color;
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = g.label;
+      label.title = g.label;
+      label.appendChild(dot);
+      label.appendChild(nameSpan);
+
+      const track = document.createElement('div');
+      track.className = 'bar-track';
+      const fill = document.createElement('div');
+      fill.className = 'bar-fill';
+      fill.style.width = pct + '%';
+      fill.style.background = g.color;
+      track.appendChild(fill);
+
+      const value = document.createElement('div');
+      value.className = 'bar-value';
+      value.textContent = fmt(val);
+
+      row.appendChild(label);
+      row.appendChild(track);
+      row.appendChild(value);
+
+      const ttHtml = () => `<div>${g.label}</div><div class="tt-value">${fmt(val)}</div><div>${LABELS[c] || c} &middot; ${g.unidades} unidade(s)</div>`;
+      row.addEventListener('pointerenter', () => showTooltip(row, ttHtml()));
+      row.addEventListener('pointermove', () => positionTooltip(row));
+      row.addEventListener('pointerleave', hideTooltip);
+      row.addEventListener('focus', () => showTooltip(row, ttHtml()));
+      row.addEventListener('blur', hideTooltip);
+      row.setAttribute('aria-label', `${g.label}: ${fmt(val)} em ${LABELS[c] || c}`);
+
+      card.appendChild(row);
+    });
+    grid.appendChild(card);
+  });
+  out.appendChild(grid);
+
+  // comparison table
+  const tableWrap = document.createElement('div');
+  tableWrap.className = 'compare-table-wrap panel';
+  const table = document.createElement('table');
+  table.className = 'compare-table';
+  const thead = document.createElement('thead');
+  const headTr = document.createElement('tr');
+  const thIndicator = document.createElement('th');
+  thIndicator.textContent = 'Indicador';
+  headTr.appendChild(thIndicator);
+  groupsData.forEach(g => {
+    const th = document.createElement('th');
+    th.innerHTML = '';
+    const wrapSpan = document.createElement('span');
+    wrapSpan.className = 'vname';
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = g.color;
+    const name = document.createElement('span');
+    name.textContent = g.label;
+    name.title = g.label;
+    wrapSpan.appendChild(dot);
+    wrapSpan.appendChild(name);
+    th.appendChild(wrapSpan);
+    headTr.appendChild(th);
+  });
+  thead.appendChild(headTr);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+
+  function addRow(label, values){
+    const tr = document.createElement('tr');
+    const tdLabel = document.createElement('td');
+    tdLabel.textContent = label;
+    tr.appendChild(tdLabel);
+    const max = Math.max(...values);
+    const allEqual = values.every(v => v === values[0]);
+    values.forEach(v => {
+      const td = document.createElement('td');
+      td.textContent = v.toLocaleString('pt-BR');
+      if (!allEqual && v === max) td.classList.add('best');
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  }
+
+  addRow('Unidades', groupsData.map(g => g.unidades));
+  addRow('Municípios', groupsData.map(g => g.municipios));
+  NUM_COLS.forEach(c => addRow(LABELS[c] || c, groupsData.map(g => g.sums[c])));
+
+  table.appendChild(tbody);
+  tableWrap.appendChild(table);
+  out.appendChild(tableWrap);
+}
+
+document.getElementById('cmp-dim').addEventListener('change', renderValueList);
+document.getElementById('cmp-search').addEventListener('input', renderValueList);
+document.getElementById('cmp-clear').addEventListener('click', () => {
+  compareGroups = [];
+  renderValueList();
+  renderChips();
+  renderCompareOutput();
+});
+
+renderValueList();
+renderChips();
+renderCompareOutput();
 </script>
 </body>
 </html>
